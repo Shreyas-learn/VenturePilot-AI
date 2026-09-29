@@ -100,8 +100,8 @@ def _get_client():
 # ---------------------------------------------------------------------------
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=4, max=30),
     retry=retry_if_exception_type(GeminiGenerationError),
     reraise=True,
 )
@@ -180,6 +180,14 @@ def generate(prompt: str, params: Optional[dict] = None) -> str:
         error_str = str(exc)
 
         # Detect permanent auth/quota errors — do NOT retry these
+        # 503 / UNAVAILABLE is transient — always retry, never treat as permanent
+        transient_keywords = ("503", "unavailable", "high demand", "try again")
+        if any(kw in error_str.lower() for kw in transient_keywords):
+            logger.warning("Gemini transient 503 — will retry: %s", exc)
+            raise GeminiGenerationError(
+                f"Gemini is temporarily overloaded (503). Retrying…"
+            ) from exc
+
         permanent_keywords = (
             "api_key", "api key", "invalid", "permission", "403",
             "authentication", "quota_exceeded", "resource_exhausted",
