@@ -9,6 +9,9 @@ streamlit>=1.35.0
 # --- Google Gemini SDK ---
 google-genai>=1.0.0
 
+# --- Groq SDK (fallback provider — optional, works without GROQ_API_KEY) ---
+groq>=0.9.0
+
 # --- Vector Store ---
 chromadb>=0.5.3
 

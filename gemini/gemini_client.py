@@ -1,17 +1,19 @@
 """
-gemini/gemini_client.py — Google Gemini API prompt execution and response handling.
+gemini/gemini_client.py — LLM generation with automatic provider fallback.
 
-Responsibilities:
-    - Send a prompt to Google Gemini via the official google-genai SDK
-    - Read all generation parameters from settings (no hardcoded values)
-    - Log request duration for performance visibility
-    - Retry up to 3 times on transient failures with exponential back-off
-    - Raise typed exceptions so callers can handle auth vs generation errors
+Primary provider:   Google Gemini  (GEMINI_MODEL, default: gemini-2.5-flash)
+Fallback 1:         Google Gemini  (GEMINI_FALLBACK_MODEL, default: gemini-1.5-flash)
+Fallback 2:         Groq           (GROQ_API_KEY + GROQ_MODEL, optional)
 
-This module is the ONLY place in the application that imports or calls
-google.genai.  All other modules call gemini_client.generate(prompt).
+When the primary model returns a transient error (503, overloaded, timeout),
+the client automatically tries the next provider in order without user action.
 
-Drop-in replacement for the old ibm/granite_client.py interface.
+The public interface is a single function:
+
+    generate(prompt)  →  str
+
+All other modules call only this function — they never know which provider
+actually ran the request.
 """
 
 import logging
@@ -31,39 +33,32 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Typed exceptions (mirror the old IBM exception names so callers need
-# minimal changes)
+# Typed exceptions
 # ---------------------------------------------------------------------------
 
 class GeminiAuthenticationError(Exception):
-    """Raised when the Gemini API key is missing or authentication fails."""
+    """Raised when all providers fail due to missing/invalid credentials."""
 
 
 class GeminiGenerationError(Exception):
-    """Raised when Gemini fails to generate a response."""
+    """Raised when a single provider attempt fails (transient — retried)."""
+
+
+class AllProvidersFailedError(Exception):
+    """Raised when every provider in the fallback chain has been exhausted."""
 
 
 # ---------------------------------------------------------------------------
-# Lazy client singleton — created once, reused across calls
+# Lazy client singletons
 # ---------------------------------------------------------------------------
 
 _gemini_client = None
+_groq_client   = None
 
 
-def _get_client():
-    """Return a cached google.genai Client instance.
-
-    Created lazily on first call and reused for the process lifetime.
-    Raises GeminiAuthenticationError when GEMINI_API_KEY is absent.
-
-    Returns:
-        An authenticated google.genai.Client instance.
-
-    Raises:
-        GeminiAuthenticationError: When the API key is missing or invalid.
-    """
+def _get_gemini_client():
+    """Return a cached google.genai Client, or raise GeminiAuthenticationError."""
     global _gemini_client
-
     if _gemini_client is not None:
         return _gemini_client
 
@@ -71,23 +66,16 @@ def _get_client():
     if not api_key:
         raise GeminiAuthenticationError(
             "GEMINI_API_KEY is not set. "
-            "Please add it to your .env file or Streamlit Cloud secrets."
+            "Add it to your .env file or Streamlit Cloud secrets."
         )
-
     try:
         from google import genai  # type: ignore
         _gemini_client = genai.Client(api_key=api_key)
-        logger.info(
-            "Gemini client initialised — model=%s, max_tokens=%s, temperature=%s",
-            settings.gemini_model,
-            settings.gemini_max_output_tokens,
-            settings.gemini_temperature,
-        )
+        logger.info("Gemini client initialised.")
         return _gemini_client
     except ImportError as exc:
         raise GeminiAuthenticationError(
-            "google-genai package is not installed. "
-            "Run: pip install google-genai"
+            "google-genai package is not installed. Run: pip install google-genai"
         ) from exc
     except Exception as exc:
         raise GeminiAuthenticationError(
@@ -95,83 +83,128 @@ def _get_client():
         ) from exc
 
 
+def _get_groq_client():
+    """Return a cached Groq client, or None if Groq is not configured."""
+    global _groq_client
+    if _groq_client is not None:
+        return _groq_client
+
+    api_key = settings.groq_api_key
+    if not api_key:
+        return None
+    try:
+        from groq import Groq  # type: ignore
+        _groq_client = Groq(api_key=api_key)
+        logger.info("Groq client initialised — model=%s.", settings.groq_model)
+        return _groq_client
+    except ImportError:
+        logger.warning("groq package not installed — Groq fallback unavailable.")
+        return None
+    except Exception as exc:
+        logger.warning("Failed to initialise Groq client: %s", exc)
+        return None
+
+
 # ---------------------------------------------------------------------------
-# Retry decorator — retries only transient GeminiGenerationError
+# Public entry point — fallback chain
+# ---------------------------------------------------------------------------
+
+def generate(prompt: str, params: Optional[dict] = None) -> str:
+    """Generate text from a prompt, with automatic fallback across providers.
+
+    Tries providers in order:
+        1. Gemini primary model   (GEMINI_MODEL)
+        2. Gemini fallback model  (GEMINI_FALLBACK_MODEL)
+        3. Groq                   (GROQ_API_KEY + GROQ_MODEL, if configured)
+
+    Args:
+        prompt: Fully assembled prompt string (startup context + RAG context).
+        params: Reserved for future use.
+
+    Returns:
+        Generated text string from whichever provider succeeded.
+
+    Raises:
+        GeminiAuthenticationError: When GEMINI_API_KEY is missing.
+        AllProvidersFailedError:   When every provider has been exhausted.
+    """
+    errors: list[str] = []
+
+    # ── 1. Primary Gemini model ──────────────────────────────────────────────
+    try:
+        logger.info("Attempting primary model: %s", settings.gemini_model)
+        return _call_gemini_with_retry(settings.gemini_model, prompt)
+    except GeminiAuthenticationError:
+        raise  # auth failure — no point trying other models with same key
+    except Exception as exc:
+        logger.warning("Primary model failed: %s", exc)
+        errors.append(f"Primary ({settings.gemini_model}): {exc}")
+
+    # ── 2. Gemini fallback model ─────────────────────────────────────────────
+    if settings.gemini_fallback_model and settings.gemini_fallback_model != settings.gemini_model:
+        try:
+            logger.info("Trying fallback Gemini model: %s", settings.gemini_fallback_model)
+            return _call_gemini_with_retry(settings.gemini_fallback_model, prompt)
+        except GeminiAuthenticationError:
+            raise
+        except Exception as exc:
+            logger.warning("Fallback Gemini model failed: %s", exc)
+            errors.append(f"Fallback Gemini ({settings.gemini_fallback_model}): {exc}")
+
+    # ── 3. Groq ──────────────────────────────────────────────────────────────
+    groq_client = _get_groq_client()
+    if groq_client:
+        try:
+            logger.info("Trying Groq fallback: %s", settings.groq_model)
+            return _call_groq(groq_client, prompt)
+        except Exception as exc:
+            logger.warning("Groq fallback failed: %s", exc)
+            errors.append(f"Groq ({settings.groq_model}): {exc}")
+
+    # ── All providers exhausted ───────────────────────────────────────────────
+    summary = " | ".join(errors)
+    raise AllProvidersFailedError(
+        f"All AI providers are currently unavailable. Please try again in a few minutes.\n"
+        f"Details: {summary}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-provider call implementations
 # ---------------------------------------------------------------------------
 
 @retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=2, min=4, max=30),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=2, min=4, max=20),
     retry=retry_if_exception_type(GeminiGenerationError),
     reraise=True,
 )
-def generate(prompt: str, params: Optional[dict] = None) -> str:
-    """Send a prompt to Google Gemini and return the generated text.
-
-    Generation parameters are read from :data:`config.settings.settings`
-    so they are tuneable through environment variables without touching
-    source code.
-
-    Retries up to 3 times with exponential back-off on transient failures.
-    Authentication errors are NOT retried (they propagate immediately).
-
-    Args:
-        prompt: The fully assembled prompt string (includes startup context
-                and RAG context — built by core/prompt_loader.py).
-        params: Optional dict to override individual generation parameters
-                for a specific request (currently unused, reserved for
-                future per-call tuning).
-
-    Returns:
-        The generated text response from Google Gemini.
-
-    Raises:
-        GeminiAuthenticationError: When the API key is absent or invalid.
-        GeminiGenerationError:     When generation fails after all retries.
-    """
-    # Authentication errors must NOT be retried — surface immediately
+def _call_gemini_with_retry(model: str, prompt: str) -> str:
+    """Call a specific Gemini model with retry on transient errors."""
     try:
-        client = _get_client()
+        client = _get_gemini_client()
     except GeminiAuthenticationError:
         raise
 
     try:
         from google.genai import types  # type: ignore
 
-        generation_config = types.GenerateContentConfig(
+        config = types.GenerateContentConfig(
             temperature=settings.gemini_temperature,
             top_p=settings.gemini_top_p,
             max_output_tokens=settings.gemini_max_output_tokens,
         )
 
-        logger.info(
-            "Gemini request — model=%s, max_tokens=%s, temperature=%s, "
-            "prompt_length=%d chars",
-            settings.gemini_model,
-            settings.gemini_max_output_tokens,
-            settings.gemini_temperature,
-            len(prompt),
-        )
-
         t_start = time.perf_counter()
-
         response = client.models.generate_content(
-            model=settings.gemini_model,
+            model=model,
             contents=prompt,
-            config=generation_config,
+            config=config,
         )
-
         elapsed = time.perf_counter() - t_start
 
-        # Extract text from response
-        text = _extract_text(response)
-
-        logger.info(
-            "Gemini response received — %d chars in %.1fs.",
-            len(text),
-            elapsed,
-        )
-
+        text = _extract_gemini_text(response)
+        logger.info("Gemini (%s) responded — %d chars in %.1fs.", model, len(text), elapsed)
         return text
 
     except GeminiAuthenticationError:
@@ -179,58 +212,53 @@ def generate(prompt: str, params: Optional[dict] = None) -> str:
     except Exception as exc:
         error_str = str(exc)
 
-        # Detect permanent auth/quota errors — do NOT retry these
-        # 503 / UNAVAILABLE is transient — always retry, never treat as permanent
-        transient_keywords = ("503", "unavailable", "high demand", "try again")
-        if any(kw in error_str.lower() for kw in transient_keywords):
-            logger.warning("Gemini transient 503 — will retry: %s", exc)
-            raise GeminiGenerationError(
-                f"Gemini is temporarily overloaded (503). Retrying…"
-            ) from exc
+        # 503 / overloaded → transient, retry
+        if any(kw in error_str.lower() for kw in ("503", "unavailable", "high demand", "overload")):
+            logger.warning("Gemini %s transient 503 — retrying: %s", model, exc)
+            raise GeminiGenerationError(f"Gemini {model} overloaded (503).") from exc
 
-        permanent_keywords = (
-            "api_key", "api key", "invalid", "permission", "403",
-            "authentication", "quota_exceeded", "resource_exhausted",
-        )
-        if any(kw in error_str.lower() for kw in permanent_keywords):
-            raise GeminiAuthenticationError(
-                f"Gemini API authentication / quota error: {exc}"
-            ) from exc
+        # 404 / not found → model deprecated, don't retry
+        if any(kw in error_str.lower() for kw in ("404", "not_found", "no longer available")):
+            raise Exception(f"Gemini model {model} not found (404): {exc}") from exc
 
-        logger.warning("Gemini generation attempt failed: %s", exc)
-        raise GeminiGenerationError(
-            f"Gemini failed to generate a response: {exc}"
-        ) from exc
+        # auth / quota → permanent
+        if any(kw in error_str.lower() for kw in ("api_key", "invalid", "403", "permission", "quota_exceeded")):
+            raise GeminiAuthenticationError(f"Gemini auth/quota error: {exc}") from exc
+
+        logger.warning("Gemini %s error: %s", model, exc)
+        raise GeminiGenerationError(f"Gemini {model} failed: {exc}") from exc
+
+
+def _call_groq(client, prompt: str) -> str:
+    """Call Groq API with the configured model."""
+    t_start = time.perf_counter()
+    response = client.chat.completions.create(
+        model=settings.groq_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=settings.gemini_temperature,
+        max_tokens=settings.gemini_max_output_tokens,
+    )
+    elapsed = time.perf_counter() - t_start
+    text = response.choices[0].message.content or ""
+    if not text.strip():
+        raise Exception("Groq returned an empty response.")
+    logger.info("Groq (%s) responded — %d chars in %.1fs.", settings.groq_model, len(text), elapsed)
+    return text.strip()
 
 
 # ---------------------------------------------------------------------------
-# Private helpers
+# Gemini response text extraction
 # ---------------------------------------------------------------------------
 
-def _extract_text(response) -> str:
-    """Safely extract text from a Gemini GenerateContentResponse.
-
-    Handles both normal responses and edge cases (blocked content,
-    empty candidates, missing parts).
-
-    Args:
-        response: A google.genai GenerateContentResponse object.
-
-    Returns:
-        The generated text string.
-
-    Raises:
-        GeminiGenerationError: When no usable text can be extracted.
-    """
+def _extract_gemini_text(response) -> str:
+    """Safely extract text from a Gemini GenerateContentResponse."""
     try:
-        # Primary path: response.text convenience property
         text = response.text
         if text and text.strip():
             return text.strip()
     except Exception:
         pass
 
-    # Fallback: iterate candidates and parts
     try:
         candidates = getattr(response, "candidates", None)
         if candidates:
@@ -239,29 +267,20 @@ def _extract_text(response) -> str:
                 if content:
                     parts = getattr(content, "parts", None)
                     if parts:
-                        combined = "".join(
-                            getattr(p, "text", "") for p in parts
-                        )
+                        combined = "".join(getattr(p, "text", "") for p in parts)
                         if combined.strip():
                             return combined.strip()
 
-        # Check for blocked content
         prompt_feedback = getattr(response, "prompt_feedback", None)
         if prompt_feedback:
             block_reason = getattr(prompt_feedback, "block_reason", None)
             if block_reason:
                 raise GeminiGenerationError(
-                    f"Gemini blocked the prompt — reason: {block_reason}. "
-                    "Try rephrasing your startup description."
+                    f"Gemini blocked the prompt — reason: {block_reason}."
                 )
     except GeminiGenerationError:
         raise
     except Exception as exc:
-        raise GeminiGenerationError(
-            f"Could not extract text from Gemini response: {exc}"
-        ) from exc
+        raise GeminiGenerationError(f"Could not extract Gemini response text: {exc}") from exc
 
-    raise GeminiGenerationError(
-        "Gemini returned an empty or unusable response. "
-        "Please try again — the model may have returned no content."
-    )
+    raise GeminiGenerationError("Gemini returned an empty response.")

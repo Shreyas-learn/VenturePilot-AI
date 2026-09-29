@@ -21,7 +21,7 @@ from frontend.layout import configure_page, render_sidebar, render_header
 from frontend.input_form import render_input_form
 from frontend.report_view import render_report
 from core.orchestrator import generate_blueprint
-from gemini.gemini_client import GeminiAuthenticationError, GeminiGenerationError
+from gemini.gemini_client import GeminiAuthenticationError, GeminiGenerationError, AllProvidersFailedError
 from rag.rag_pipeline import init_rag, RAGStatus
 
 logger = get_logger(__name__)
@@ -145,6 +145,15 @@ def _run_generation(startup_input) -> None:
             "🔐 **Authentication failed.**\n\n"
             f"{exc}\n\n"
             "Please verify `GEMINI_API_KEY` in your `.env` file or Streamlit secrets.",
+        )
+
+    except AllProvidersFailedError as exc:
+        info_box.empty()
+        logger.error("All providers failed: %s", exc)
+        st.error(
+            "🤖 **All AI providers are currently unavailable.**\n\n"
+            f"{exc}\n\n"
+            "Please wait a few minutes and try again.",
         )
 
     except GeminiGenerationError as exc:

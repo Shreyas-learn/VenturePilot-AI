@@ -37,10 +37,22 @@ class Settings:
     gemini_api_key: str = field(
         default_factory=lambda: os.getenv("GEMINI_API_KEY", "")
     )
-    # Configurable model — no hardcoded default that may become obsolete.
-    # gemini-2.0-flash is the recommended current model (fast, capable).
     gemini_model: str = field(
-        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    )
+    # Fallback model — used automatically when primary model is overloaded
+    gemini_fallback_model: str = field(
+        default_factory=lambda: os.getenv("GEMINI_FALLBACK_MODEL", "gemini-1.5-flash")
+    )
+
+    # ------------------------------------------------------------------
+    # Groq fallback (optional — leave GROQ_API_KEY empty to disable)
+    # ------------------------------------------------------------------
+    groq_api_key: str = field(
+        default_factory=lambda: os.getenv("GROQ_API_KEY", "")
+    )
+    groq_model: str = field(
+        default_factory=lambda: os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     )
 
     # ------------------------------------------------------------------
