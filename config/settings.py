@@ -38,11 +38,11 @@ class Settings:
         default_factory=lambda: os.getenv("GEMINI_API_KEY", "")
     )
     gemini_model: str = field(
-        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     )
     # Fallback model — used automatically when primary model is overloaded
     gemini_fallback_model: str = field(
-        default_factory=lambda: os.getenv("GEMINI_FALLBACK_MODEL", "gemini-1.5-flash")
+        default_factory=lambda: os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash-lite")
     )
 
     # ------------------------------------------------------------------
@@ -52,7 +52,7 @@ class Settings:
         default_factory=lambda: os.getenv("GROQ_API_KEY", "")
     )
     groq_model: str = field(
-        default_factory=lambda: os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        default_factory=lambda: os.getenv("GROQ_MODEL", "llama3-70b-8192")
     )
 
     # ------------------------------------------------------------------
