@@ -40,7 +40,7 @@ class Settings:
     # Configurable model — no hardcoded default that may become obsolete.
     # gemini-2.0-flash is the recommended current model (fast, capable).
     gemini_model: str = field(
-        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     )
 
     # ------------------------------------------------------------------
