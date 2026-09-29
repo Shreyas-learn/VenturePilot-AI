@@ -1,0 +1,658 @@
+# VenturePilot AI
+
+## PROJECT OVERVIEW
+
+You are an expert AI Software Engineer, Senior Python Developer, IBM watsonx Developer, Streamlit Expert, Solution Architect, UI/UX Designer, Technical Writer, and Software Engineering Lead.
+
+Your responsibility is to generate a complete production-ready application.
+
+The application name is:
+
+# VenturePilot AI
+
+Tagline:
+
+Your AI Co-Founder
+
+Motto:
+
+Build • Validate • Fund • Launch
+
+This application must be professional enough to be demonstrated in an IBM SkillsBuild / AICTE internship.
+
+The generated project should look like a real startup product instead of a college assignment.
+
+Generate maintainable, modular, readable, production-quality code.
+
+Follow software engineering best practices.
+
+Do not create unnecessary files.
+
+Do not generate placeholder code unless absolutely required.
+
+Every file should have a clear purpose.
+
+Generate complete documentation.
+
+# PRODUCT VISION
+
+VenturePilot AI is NOT a chatbot.
+
+It is an AI Startup Consultant.
+
+Its responsibility is helping entrepreneurs transform startup ideas into investor-ready businesses.
+
+The application should behave like a team of professional consultants.
+
+It should combine:
+
+- Startup Mentor
+- Business Strategist
+- Market Analyst
+- Funding Advisor
+- Legal Advisor
+- Product Consultant
+
+Instead of answering like ChatGPT, the system should produce structured professional reports.
+
+The application must feel like a SaaS product.
+
+# CORE FEATURES
+
+The application must generate the following sections:
+
+1. Executive Summary
+
+2. Problem Statement
+
+3. Proposed Solution
+
+4. Vision
+
+5. Mission
+
+6. Target Customers
+
+7. Value Proposition
+
+8. Business Model Canvas
+
+9. Revenue Model
+
+10. Competitor Analysis
+
+11. SWOT Analysis
+
+12. Estimated Budget
+
+13. Funding Opportunities
+
+14. Government Schemes
+
+15. Incubator Recommendations
+
+16. Go-To-Market Strategy
+
+17. 12 Month Roadmap
+
+18. Risks and Mitigation
+
+19. Final Recommendation
+
+20. Investor Elevator Pitch
+
+21. Startup Readiness Score
+
+22. Immediate Next Steps
+
+# USER EXPERIENCE
+
+The application must look like a modern SaaS dashboard.
+
+It must not resemble ChatGPT or a generic chatbot.
+
+Use a professional layout with a sidebar for branding and navigation.
+
+The landing page should include:
+
+------------------------------------------------
+
+🚀 VenturePilot AI
+
+Your AI Co-Founder
+
+Build • Validate • Fund • Launch
+
+------------------------------------------------
+
+The main screen should contain an input form.
+
+The form should contain:
+
+• Startup Name
+
+• Startup Idea
+
+• Industry
+
+• Country
+
+• Budget
+
+• Startup Stage
+
+A large Generate Blueprint button should be displayed.
+
+Once the report is generated, organize the output into collapsible sections or tabs.
+
+Suggested sections:
+
+Business Blueprint
+
+Funding Advisor
+
+Market Intelligence
+
+Roadmap
+
+Investor Pitch
+
+Startup Score
+
+Action Plan
+
+Provide Download PDF and Download Markdown buttons at the end.
+
+The UI should be clean, modern, responsive and visually appealing.
+
+Use icons wherever appropriate.
+
+Avoid clutter.
+
+Maintain professional spacing.
+
+The application should feel like a commercial SaaS platform.
+
+# APPLICATION ARCHITECTURE
+
+The project must follow clean architecture.
+
+Separate the application into multiple modules.
+
+Suggested architecture:
+
+Frontend
+
+↓
+
+Backend
+
+↓
+
+IBM Granite Service
+
+↓
+
+Retriever
+
+↓
+
+Knowledge Base
+
+↓
+
+Report Generator
+
+↓
+
+PDF Export
+
+Each module should have a single responsibility.
+
+Avoid writing the complete application inside app.py.
+
+The frontend should only handle user interaction.
+
+Business logic should remain inside backend modules.
+
+Configuration should remain inside a config module.
+
+Prompt templates should remain inside a prompts directory.
+
+Utility functions should remain inside a utils directory.
+
+# SOFTWARE ARCHITECTURE
+
+Build the application using a clean modular architecture.
+
+Do NOT place all code inside a single app.py file.
+
+The project should be easy to maintain, scalable and production-ready.
+
+Use the following folder structure exactly.
+
+VenturePilot-AI/
+
+│
+
+├── app.py
+(Main Streamlit Entry Point)
+
+├── frontend/
+(User Interface Components)
+
+├── core/
+(Application Logic)
+
+├── rag/
+(Retrieval Augmented Generation)
+
+├── prompts/
+(Prompt Templates)
+
+├── ibm/
+(IBM watsonx Services)
+
+├── config/
+(Configuration)
+
+├── utils/
+(Reusable Helper Functions)
+
+├── knowledge_base/
+(PDFs and Knowledge Documents)
+
+├── assets/
+(Images, Logos, Icons)
+
+├── exports/
+(Generated PDFs and Markdown Files)
+
+├── docs/
+(Project Documentation)
+
+├── README.md
+
+├── requirements.txt
+
+├── .env.example
+
+Every folder should contain meaningful files.
+
+Avoid empty folders.
+
+Every module should have a single responsibility.
+
+Follow Clean Architecture principles.
+
+# IBM WATSONX INTEGRATION
+
+The application MUST use IBM watsonx Python SDK.
+
+Do NOT use Prompt Lab inside the application.
+
+The application must communicate directly with IBM Granite through watsonx APIs.
+
+The following values must be loaded using environment variables.
+
+IBM_WATSONX_API_KEY
+
+IBM_WATSONX_PROJECT_ID
+
+IBM_WATSONX_URL
+
+Never hardcode credentials.
+
+Provide a complete .env.example file.
+
+Provide detailed setup instructions inside README.md explaining where users should place these values.
+
+Create a dedicated watsonx service module responsible for:
+
+Authentication
+
+Model connection
+
+Prompt execution
+
+Error handling
+
+Retry handling
+
+Timeout handling
+
+The rest of the application should never directly call IBM Granite.
+
+All requests should pass through the service layer.
+
+# RAG ARCHITECTURE
+
+The application must implement Retrieval-Augmented Generation (RAG).
+
+Do not generate funding information purely from the language model.
+
+Instead:
+
+User Query
+
+↓
+
+Retriever
+
+↓
+
+Knowledge Base
+
+↓
+
+Relevant Context
+
+↓
+
+IBM Granite
+
+↓
+
+Final Response
+
+The retriever should retrieve only relevant documents.
+
+The retrieved context should be inserted into the prompt before sending it to IBM Granite.
+
+The architecture should support adding additional PDF documents without changing source code.
+
+The application should automatically index newly added documents.
+
+# KNOWLEDGE BASE
+
+Create a folder called
+
+knowledge_base
+
+The application should automatically load all PDF files from this folder.
+
+The initial knowledge base should support documents related to:
+
+Startup India
+
+Startup India Seed Fund
+
+MSME Schemes
+
+SIDBI
+
+DPIIT
+
+Government Startup Policies
+
+Business Model Canvas
+
+Startup Pitch Deck Guide
+
+Indian Startup Ecosystem
+
+Incubators
+
+Legal Compliance
+
+GST Registration
+
+Company Registration
+
+Intellectual Property
+
+The application should gracefully work even if the folder is initially empty.
+
+# PROMPT MANAGEMENT
+
+Do not hardcode prompts inside Python files.
+
+Store prompts inside the prompts folder.
+
+Suggested prompt files:
+
+business_blueprint.md
+
+funding.md
+
+market_analysis.md
+
+startup_score.md
+
+investor_pitch.md
+
+The application should dynamically load prompts from these files.
+
+Prompt templates should be easy to edit without changing application logic.
+
+# CODING STANDARDS
+
+Generate production-quality Python code.
+
+Follow PEP 8 coding standards.
+
+Use meaningful variable names.
+
+Use meaningful function names.
+
+Use meaningful class names.
+
+Never write long functions.
+
+Keep every function focused on a single responsibility.
+
+Avoid duplicate code.
+
+Reuse helper functions whenever possible.
+
+Use Python type hints.
+
+Write proper docstrings for every public function.
+
+Comment only when necessary.
+
+Avoid unnecessary comments.
+
+Follow Object Oriented Programming where appropriate.
+
+Do not hardcode values.
+
+Store configurable values inside configuration files or environment variables.
+
+Use logging instead of print statements.
+
+Use exception handling wherever external services are called.
+
+Display user-friendly error messages.
+
+Never expose API keys.
+
+Never expose sensitive information.
+
+# STREAMLIT USER INTERFACE
+
+Create a clean professional dashboard.
+
+Primary color theme should be modern.
+
+Use a wide layout.
+
+Display the VenturePilot AI logo at the top.
+
+Sidebar should contain:
+
+• About VenturePilot AI
+
+• Application Version
+
+• Technologies Used
+
+• IBM Granite
+
+• IBM watsonx
+
+Main page should contain:
+
+Startup Name
+
+Startup Idea
+
+Industry Dropdown
+
+Country Dropdown
+
+Budget
+
+Startup Stage
+
+Generate Blueprint Button
+
+While generating responses display a spinner.
+
+After generation display the report inside well-organized expandable sections.
+
+Provide Download PDF button.
+
+Provide Download Markdown button.
+
+Use icons where appropriate.
+
+Maintain consistent spacing throughout the application.
+
+# ERROR HANDLING
+
+Handle all possible runtime failures.
+
+Examples include:
+
+Invalid API key
+
+Invalid Project ID
+
+Internet connection issues
+
+IBM watsonx timeout
+
+Empty user input
+
+Missing knowledge base
+
+Missing environment variables
+
+Provide meaningful user-friendly error messages.
+
+Never crash the application.
+
+Gracefully recover whenever possible.
+
+# README
+
+Generate a professional README.
+
+Include:
+
+Project Overview
+
+Features
+
+Architecture
+
+Folder Structure
+
+Installation
+
+Python Version
+
+Dependencies
+
+IBM watsonx Setup
+
+Environment Variables
+
+Running the Project
+
+Knowledge Base
+
+Screenshots Placeholder
+
+Future Improvements
+
+License
+
+Author
+
+Acknowledgements
+
+# REQUIREMENTS.TXT
+
+Generate a complete requirements.txt.
+
+Include only necessary packages.
+
+Avoid unnecessary dependencies.
+
+Pin package versions where appropriate.
+
+Ensure compatibility with Python 3.11.
+
+# QUALITY RULES
+
+This application must NOT look like a college assignment.
+
+It should resemble a commercial SaaS product.
+
+Prioritize readability over clever code.
+
+Prioritize maintainability over shortcuts.
+
+Avoid code duplication.
+
+Avoid giant files.
+
+Avoid giant functions.
+
+Keep every module independent.
+
+Generate modular reusable code.
+
+The project should be GitHub ready.
+
+The project should be portfolio ready.
+
+The project should be suitable for demonstrating during an IBM internship.
+
+Every generated file should have a clear purpose.
+
+# IMPLEMENTATION STRATEGY
+
+DO NOT generate the entire application immediately.
+
+Instead work in phases.
+
+Phase 1
+
+Generate
+
+Folder Structure
+
+README
+
+requirements.txt
+
+.env.example
+
+Architecture
+
+Project Skeleton
+
+Then STOP.
+
+Wait for user confirmation.
+
+After confirmation proceed to Phase 2.
+
+Do not continue automatically.
+
+Never generate unfinished placeholder code.
+
+Every generated file should be functional.
