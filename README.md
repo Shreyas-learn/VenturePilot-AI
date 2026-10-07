@@ -16,6 +16,7 @@ VenturePilot AI is an AI-powered startup consulting and business blueprint gener
 | 🗓️ **Business Planning** | 12-Month Roadmap, Risks & Mitigation |
 | 🎤 **Investor Pitch** | Elevator Pitch, Final Recommendation, Immediate Next Steps |
 | ⭐ **Readiness Score** | Six-dimensional startup readiness scoring (0–100) |
+| 🧭 **Judge Prep** | Likely judge questions with report-backed talking points and evidence gaps |
 | 📥 **Export** | Download full blueprint as **Markdown** or **PDF** |
 
 ---

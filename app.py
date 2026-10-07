@@ -20,6 +20,7 @@ from utils.logger import get_logger
 from frontend.layout import configure_page, render_sidebar, render_header
 from frontend.input_form import render_input_form
 from frontend.report_view import render_report
+from frontend.judge_prep import render_judge_prep
 from core.orchestrator import generate_blueprint
 from gemini.gemini_client import GeminiAuthenticationError, GeminiGenerationError, AllProvidersFailedError
 from rag.rag_pipeline import init_rag, RAGStatus
@@ -211,6 +212,7 @@ def main() -> None:
     # Render the most recently generated report (persists across reruns)
     if st.session_state.report:
         render_report(st.session_state.report)
+        render_judge_prep(st.session_state.report)
 
 
 if __name__ == "__main__":
